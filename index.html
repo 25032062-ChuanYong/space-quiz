@@ -231,9 +231,10 @@
       color: var(--muted);
       font-size: .86rem;
       font-weight: 700;
+      flex-wrap: wrap;
     }
 
-    .score-pill {
+    .score-pill, .best-pill {
       padding: 6px 10px;
       border-radius: 999px;
       color: var(--accent);
@@ -443,6 +444,7 @@
         <div class="status-row">
           <span id="questionCount">Question 1 of 10</span>
           <span class="score-pill">⭐ Score: <strong id="score">0</strong></span>
+          <span class="best-pill">🏆 Best: <strong id="bestScore">—</strong></span>
         </div>
         <div class="progress-track" aria-label="Quiz progress">
           <div class="progress-bar" id="progressBar"></div>
@@ -533,9 +535,55 @@
     ];
 
     const $ = (id) => document.getElementById(id);
+    const storageKey = "orbitQuestPersonalBest";
     let current = 0;
     let score = 0;
     let answered = false;
+    let personalBest = {
+      bestScore: null,
+      attempts: 0
+    };
+
+    function loadPersonalBest() {
+      try {
+        const stored = JSON.parse(localStorage.getItem(storageKey));
+        if (
+          stored &&
+          (stored.bestScore === null || (Number.isInteger(stored.bestScore) && stored.bestScore >= 0 && stored.bestScore <= questions.length)) &&
+          Number.isInteger(stored.attempts) &&
+          stored.attempts >= 0
+        ) {
+          personalBest = {
+            bestScore: stored.bestScore,
+            attempts: stored.attempts
+          };
+        }
+      } catch {
+        personalBest = { bestScore: null, attempts: 0 };
+      }
+      updatePersonalBestDisplay();
+    }
+
+    function updatePersonalBestDisplay() {
+      $("bestScore").textContent = personalBest.bestScore === null ? "—" : personalBest.bestScore;
+    }
+
+    function savePersonalBest() {
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(personalBest));
+      } catch {
+        // Storage can be unavailable in private or restricted browsing contexts.
+      }
+    }
+
+    function recordCompletedQuiz() {
+      personalBest.attempts++;
+      if (personalBest.bestScore === null || score > personalBest.bestScore) {
+        personalBest.bestScore = score;
+      }
+      savePersonalBest();
+      updatePersonalBestDisplay();
+    }
 
     function renderQuestion() {
       const item = questions[current];
@@ -585,6 +633,7 @@
     }
 
     function showResults() {
+      recordCompletedQuiz();
       $("quizView").style.display = "none";
       $("resultView").classList.add("visible");
       const percentage = Math.round((score / questions.length) * 100);
@@ -602,7 +651,7 @@
       }
       $("resultEmoji").textContent = emoji;
       $("resultTitle").textContent = title;
-      $("resultText").textContent = message;
+      $("resultText").textContent = `${message} Personal best: ${personalBest.bestScore} out of ${questions.length}. Attempts: ${personalBest.attempts}.`;
       sprinkle(28);
     }
 
@@ -649,6 +698,7 @@
       $("themeToggle").setAttribute("aria-label", dark ? "Switch to dark theme" : "Switch to light theme");
     });
 
+    loadPersonalBest();
     renderQuestion();
   </script>
 </body>
