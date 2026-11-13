@@ -373,6 +373,64 @@
     .result h2 { margin: 8px 0 8px; }
     .result p { margin: 0 0 22px; color: var(--muted); line-height: 1.5; }
 
+    .answer-review {
+      margin: 26px 0 24px;
+      text-align: left;
+    }
+
+    .answer-review h3 {
+      margin: 0 0 6px;
+      font-size: 1.15rem;
+    }
+
+    .review-intro {
+      margin-bottom: 16px !important;
+      font-size: .92rem;
+    }
+
+    .review-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .review-item {
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-left: 4px solid var(--muted);
+      border-radius: 16px;
+      background: var(--card-solid);
+    }
+
+    .review-item.correct { border-left-color: var(--success); }
+    .review-item.incorrect { border-left-color: var(--danger); }
+
+    .review-question {
+      margin: 0 0 10px;
+      font-weight: 800;
+      line-height: 1.4;
+    }
+
+    .review-status {
+      display: inline-block;
+      margin-bottom: 10px;
+      font-size: .78rem;
+      font-weight: 850;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+
+    .review-item.correct .review-status { color: var(--success); }
+    .review-item.incorrect .review-status { color: var(--danger); }
+
+    .review-answer, .review-fact {
+      margin: 5px 0 0;
+      color: var(--muted);
+      font-size: .92rem;
+      line-height: 1.45;
+    }
+
+    .review-answer strong, .review-fact strong { color: var(--text); }
+
     .confetti {
       position: fixed;
       z-index: 5;
@@ -465,6 +523,11 @@
         <div class="result-emoji" id="resultEmoji">🚀</div>
         <h2 id="resultTitle">Mission complete!</h2>
         <p id="resultText"></p>
+        <section class="answer-review" aria-labelledby="reviewTitle">
+          <h3 id="reviewTitle">Answer review</h3>
+          <p class="review-intro">Review every response, the correct answer, and the space fact behind it.</p>
+          <div class="review-list" id="reviewList"></div>
+        </section>
         <button class="restart-button" id="restartButton" type="button">Launch again</button>
       </div>
     </section>
@@ -584,6 +647,7 @@
       savePersonalBest();
       updatePersonalBestDisplay();
     }
+    let responses = [];
 
     function renderQuestion() {
       const item = questions[current];
@@ -610,6 +674,7 @@
       if (answered) return;
       answered = true;
       const item = questions[current];
+      responses[current] = selected;
       const buttons = document.querySelectorAll(".answer");
       buttons.forEach((button, index) => {
         button.disabled = true;
@@ -652,12 +717,54 @@
       $("resultEmoji").textContent = emoji;
       $("resultTitle").textContent = title;
       $("resultText").textContent = `${message} Personal best: ${personalBest.bestScore} out of ${questions.length}. Attempts: ${personalBest.attempts}.`;
+      renderAnswerReview();
       sprinkle(28);
+    }
+
+    function renderAnswerReview() {
+      const reviewList = $("reviewList");
+      reviewList.replaceChildren();
+
+      questions.forEach((item, index) => {
+        const selected = responses[index];
+        const isCorrect = selected === item.correct;
+        const reviewItem = document.createElement("article");
+        reviewItem.className = `review-item ${isCorrect ? "correct" : "incorrect"}`;
+
+        const question = document.createElement("p");
+        question.className = "review-question";
+        question.textContent = `${index + 1}. ${item.question}`;
+
+        const status = document.createElement("span");
+        status.className = "review-status";
+        status.textContent = isCorrect ? "Correct response" : "Incorrect response";
+
+        const selectedAnswer = document.createElement("p");
+        selectedAnswer.className = "review-answer";
+        selectedAnswer.innerHTML = "<strong>Your answer:</strong> ";
+        selectedAnswer.append(document.createTextNode(
+          selected === undefined ? "No answer recorded" : item.answers[selected]
+        ));
+
+        const correctAnswer = document.createElement("p");
+        correctAnswer.className = "review-answer";
+        correctAnswer.innerHTML = "<strong>Correct answer:</strong> ";
+        correctAnswer.append(document.createTextNode(item.answers[item.correct]));
+
+        const fact = document.createElement("p");
+        fact.className = "review-fact";
+        fact.innerHTML = "<strong>Space fact:</strong> ";
+        fact.append(document.createTextNode(item.fact));
+
+        reviewItem.append(question, status, selectedAnswer, correctAnswer, fact);
+        reviewList.append(reviewItem);
+      });
     }
 
     function resetQuiz() {
       current = 0;
       score = 0;
+      responses = [];
       $("score").textContent = "0";
       $("quizView").style.display = "block";
       $("resultView").classList.remove("visible");
